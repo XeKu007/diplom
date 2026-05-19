@@ -1,17 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 export default function BudgetPlanningPage() {
-  const [userType, setUserType] = useState<"training" | "finance" | "admin" | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedType = localStorage.getItem("userType") as "training" | "finance" | "admin" | null;
-      setUserType(savedType);
-    }
-  }, []);
+  const { getDashboardLink } = useAdminRole();
 
   // Determine which dashboard to link back to
   const getDashboardLink = () => {

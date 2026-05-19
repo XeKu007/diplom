@@ -1,29 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 export default function BudgetPage() {
-  const router = useRouter();
-  const [userType, setUserType] = useState<string | null>(null);
+  const { getDashboardLink } = useAdminRole();
   const [year, setYear] = useState("2024");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedType = localStorage.getItem("userType");
-      setUserType(savedType);
-
-      // Зөвхөн бүрэн эрхт админ эсвэл санхүүгийн албаны админ энэ хуудсыг харж болно
-      if (savedType !== "admin" && savedType !== "finance") {
-        router.push("/admin/dashboard");
-      }
-    }
-  }, [router]);
-
-  const backLink = userType === "admin" ? "/admin/dashboard" : 
-                   userType === "finance" ? "/admin/finance-dashboard" : 
-                   "/admin/dashboard";
+  const backLink = getDashboardLink();
 
   const years = ["2024", "2023", "2022", "2021"];
 

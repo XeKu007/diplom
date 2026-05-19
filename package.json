@@ -5,10 +5,22 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "clean": "if exist .next rmdir /s /q .next",
+    "fresh": "if exist .next rmdir /s /q .next && next build",
+    "db:push": "prisma db push",
+    "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
-    "next": "14.2.5",
+    "@prisma/client": "5.22.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.3",
+    "next": "14.2.35",
+    "prisma": "5.22.0",
     "react": "^18",
     "react-dom": "^18"
   },
@@ -17,8 +29,12 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10",
-    "postcss": "^8",
+    "postcss": ">=8.5.10",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": ">=8.5.10"
   }
 }

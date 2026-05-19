@@ -1,26 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 
 export default function TaxRecordsPage() {
-  const router = useRouter();
-  const [userType, setUserType] = useState<string | null>(null);
   const [year, setYear] = useState("2024");
   const [taxType, setTaxType] = useState("Бүгд");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedType = localStorage.getItem("userType");
-      setUserType(savedType);
-
-      // Зөвхөн санхүүгийн албаны админ энэ хуудсыг харж болно
-      if (savedType !== "finance") {
-        router.push("/admin/dashboard");
-      }
-    }
-  }, [router]);
 
   const backLink = "/admin/finance-dashboard";
 

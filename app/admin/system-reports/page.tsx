@@ -1,26 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 
 export default function SystemReportsPage() {
-  const router = useRouter();
-  const [userType, setUserType] = useState<string | null>(null);
   const [reportType, setReportType] = useState("Системийн ашиглалт");
   const [period, setPeriod] = useState("Энэ сар");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedType = localStorage.getItem("userType");
-      setUserType(savedType);
-
-      // Зөвхөн бүрэн эрхт админ энэ хуудсыг харж болно
-      if (savedType !== "admin") {
-        router.push("/admin/dashboard");
-      }
-    }
-  }, [router]);
 
   const backLink = "/admin/dashboard";
 

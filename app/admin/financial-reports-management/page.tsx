@@ -1,38 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 export default function FinancialReportsManagement() {
   const [activeMenu, setActiveMenu] = useState("Санхүүгийн тайлан");
-  const [userType, setUserType] = useState<"admin" | "training" | "finance" | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedType = localStorage.getItem("userType") as "admin" | "training" | "finance" | null;
-      setUserType(savedType);
-      
-      // Set user type if not set (default to admin)
-      if (!savedType) {
-        localStorage.setItem("userType", "admin");
-        setUserType("admin");
-      }
-    }
-  }, []);
-
-  const getBackLink = () => {
-    if (userType === "training") return "/admin/training-dashboard";
-    if (userType === "finance") return "/admin/finance-dashboard";
-    return "/admin/dashboard";
-  };
-
-  const getAdminTitle = () => {
-    if (userType === "training") return "Сургалтын админ";
-    if (userType === "finance") return "Санхүүгийн админ";
-    return "Бүрэн эрхт админ";
-  };
+  const { getDashboardLink, getRoleLabel } = useAdminRole();
 
   const reports = [
     { id: 1, name: "2026 оны 1-р улирлын тайлан", type: "Улирлын", period: "2026-01-01 - 2026-03-31", status: "Баталгаажсан", size: "2.4 MB" },
@@ -79,10 +55,10 @@ export default function FinancialReportsManagement() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2">
-                  <p className="text-sm font-medium text-white">{getAdminTitle()}</p>
+                  <p className="text-sm font-medium text-white">{getRoleLabel()}</p>
                   <p className="text-xs text-white/40">Санхүүгийн тайлан</p>
                 </div>
-                <Link href={getBackLink()} className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white/70 hover:text-white">
+                <Link href={getDashboardLink()} className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white/70 hover:text-white">
                   Буцах
                 </Link>
               </div>

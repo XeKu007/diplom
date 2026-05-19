@@ -224,14 +224,9 @@ export default function Navbar() {
               <div className="my-1 h-px bg-white/[0.06]" />
 
               <button
-                onClick={() => { 
-                  setOpen(false); 
-                  if (typeof window !== 'undefined') {
-                    sessionStorage.clear();
-                    localStorage.removeItem("userType");
-                    localStorage.removeItem("adminSubtype");
-                    localStorage.removeItem("parentStudentId");
-                  }
+                onClick={async () => { 
+                  setOpen(false);
+                  await fetch("/api/auth/logout", { method: "POST" });
                   router.replace("/login");
                 }}
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-400/80 transition-all hover:bg-red-500/10 hover:text-red-300"

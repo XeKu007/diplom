@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  student
+  teacher
+  parent
+  admin
+  training
+  finance
+}
+
+// ── Хэрэглэгч ────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  passwordHash String
+  role         Role
+  name         String
+  adminType    String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  student      Student?
+  teacher      Teacher?
+  parentOf     ParentStudent[] @relation("ParentUser")
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+// ── Оюутан ────────────────────────────────────────────────
+model Student {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastName       String
+  firstName      String
+  email          String?
+  phone          String?
+  birthDate      DateTime?
+  gender         String?
+  address        String?
+  major          String?
+  classGroup     String?
+  enrollmentYear String?
+  semester       String?
+  advisor        String?
+  scholarship    String?
+  dormitory      String?
+  status         String   @default("active") // active | leave | graduated | expelled
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  enrollments    Enrollment[]
+  payments       Payment[]
+  attendances    Attendance[]
+  grades         Grade[]
+  notifications  Notification[]
+  parentLinks    ParentStudent[]
+
+  @@map("students")
+}
+
+// ── Багш ──────────────────────────────────────────────────
+model Teacher {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastName   String
+  firstName  String
+  email      String?
+  phone      String?
+  department String?
+  position   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  courses    Course[]
+  salaries   Salary[]
+
+  @@map("teachers")
+}
+
+// ── Эцэг/эх — Оюутан холбоос ─────────────────────────────
+model ParentStudent {
+  id        String  @id @default(cuid())
+  parentId  String
+  studentId String
+  parent    User    @relation("ParentUser", fields: [parentId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+  @@map("parent_students")
+}
+
+// ── Хичээл ────────────────────────────────────────────────
+model Course {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  credits     Int      @default(3)
+  semester    String?
+  teacherId   String?
+  teacher     Teacher? @relation(fields: [teacherId], references: [id])
+  room        String?
+  schedule    String?
+  maxStudents Int      @default(30)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  enrollments Enrollment[]
+  attendances Attendance[]
+  grades      Grade[]
+  timetables  Timetable[]
+
+  @@map("courses")
+}
+
+// ── Бүртгэл (оюутан-хичээл) ──────────────────────────────
+model Enrollment {
+  id        String   @id @default(cuid())
+  studentId String
+  courseId  String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, courseId])
+  @@map("enrollments")
+}
+
+// ── Ирц ───────────────────────────────────────────────────
+model Attendance {
+  id        String   @id @default(cuid())
+  studentId String
+  courseId  String
+  date      DateTime @db.Date
+  status    String   // present | absent | late | excused
+  note      String?
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, courseId, date])
+  @@map("attendances")
+}
+
+// ── Дүн ───────────────────────────────────────────────────
+model Grade {
+  id          String   @id @default(cuid())
+  studentId   String
+  courseId    String
+  quiz1       Float?
+  quiz2       Float?
+  midterm     Float?
+  assignment  Float?
+  attendance  Float?
+  final       Float?
+  totalScore  Float?
+  letterGrade String?
+  semester    String?
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([studentId, courseId, semester])
+  @@map("grades")
+}
+
+// ── Төлбөр ────────────────────────────────────────────────
+model Payment {
+  id        String   @id @default(cuid())
+  studentId String
+  term      String
+  amount    Float
+  status    String   @default("pending") // paid | pending | overdue
+  paidAt    DateTime?
+  note      String?
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payments")
+}
+
+// ── Хуваарь ───────────────────────────────────────────────
+model Timetable {
+  id        String   @id @default(cuid())
+  courseId  String
+  dayOfWeek Int      // 1=Mon..7=Sun
+  startTime String   // "09:00"
+  endTime   String   // "10:30"
+  room      String?
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("timetables")
+}
+
+// ── Цалин ─────────────────────────────────────────────────
+model Salary {
+  id        String   @id @default(cuid())
+  teacherId String
+  month     String   // "2025-05"
+  base      Float
+  bonus     Float    @default(0)
+  deduction Float    @default(0)
+  net       Float
+  status    String   @default("pending") // paid | pending
+  paidAt    DateTime?
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("salaries")
+}
+
+// ── Мэдэгдэл ──────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(cuid())
+  studentId String?
+  title     String
+  body      String
+  type      String   @default("info") // info | warning | success | error
+  isRead    Boolean  @default(false)
+  student   Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+// ── Audit log ─────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  detail    String?
+  ip        String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}

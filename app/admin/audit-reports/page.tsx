@@ -1,24 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 export default function AuditReportsPage() {
-  const [userType, setUserType] = useState<"training" | "finance" | "admin" | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedType = localStorage.getItem("userType") as "training" | "finance" | "admin" | null;
-      setUserType(savedType);
-    }
-  }, []);
-
-  // Determine which dashboard to link back to
-  const getDashboardLink = () => {
-    if (userType === "finance") return "/admin/finance-dashboard";
-    if (userType === "training") return "/admin/training-dashboard";
-    return "/admin/dashboard";
-  };
+  const { getDashboardLink } = useAdminRole();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0118] to-[#1a0b2e] p-6">

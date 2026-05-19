@@ -1,182 +1,257 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useEffect, useState, useCallback } from "react";
+import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/Sidebar";
+
+interface Payment {
+  id: string;
+  amount: number;
+  status: string;
+  term: string;
+  paidAt: string | null;
+  createdAt: string;
+  student: {
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+    user: { userId: string };
+  };
+}
+
+const fmt = (n: number) => "₮ " + n.toLocaleString("mn-MN");
 
 export default function PaymentBalancePage() {
-  const router = useRouter();
-  const [userType, setUserType] = useState<string | null>(null);
+  const [activeMenu, setActiveMenu] = useState("Төлбөрийн үлдэгдэл");
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/payments");
+      if (res.ok) {
+        const data = await res.json();
+        setPayments(Array.isArray(data) ? data : []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedType = localStorage.getItem("userType");
-      setUserType(savedType);
+    load();
+  }, [load]);
 
-      // Зөвхөн санхүүгийн албаны админ энэ хуудсыг харж болно
-      if (savedType !== "finance") {
-        router.push("/admin/dashboard");
-      }
+  // Group by student to show balance
+  const studentMap: Record<
+    string,
+    { name: string; userId: string; phone: string | null; total: number; paid: number; balance: number; hasOverdue: boolean }
+  > = {};
+
+  payments.forEach((p) => {
+    const key = p.student?.user?.userId ?? p.id;
+    if (!studentMap[key]) {
+      studentMap[key] = {
+        name: `${p.student?.lastName ?? ""} ${p.student?.firstName ?? ""}`.trim(),
+        userId: p.student?.user?.userId ?? "",
+        phone: p.student?.phone ?? null,
+        total: 0,
+        paid: 0,
+        balance: 0,
+        hasOverdue: false,
+      };
     }
-  }, [router]);
+    studentMap[key].total += p.amount;
+    if (p.status === "paid") studentMap[key].paid += p.amount;
+    else studentMap[key].balance += p.amount;
+    if (p.status === "overdue") studentMap[key].hasOverdue = true;
+  });
 
-  const backLink = "/admin/finance-dashboard";
-
-  const paymentData = [
-    { student: "Б. Бат-Эрдэнэ", course: "Python програмчлал", total: 1500000, paid: 1000000, balance: 500000, dueDate: "2024-03-15", status: "Хугацаа хэтрээгүй" },
-    { student: "Ц. Энх-Амгалан", course: "Санхүүгийн удирдлага", total: 1800000, paid: 900000, balance: 900000, dueDate: "2024-03-10", status: "Хугацаа хэтэрсэн" },
-    { student: "Д. Ган-Эрдэнэ", course: "Иргэний эрх зүй", total: 1200000, paid: 1200000, balance: 0, dueDate: "2024-03-01", status: "Төлөгдсөн" },
-    { student: "Н. Болд-Эрдэнэ", course: "Бизнесийн стратеги", total: 2000000, paid: 1500000, balance: 500000, dueDate: "2024-03-20", status: "Хугацаа хэтрээгүй" },
-    { student: "О. Цэцэг-Эрдэнэ", course: "Дижитал маркетинг", total: 1600000, paid: 800000, balance: 800000, dueDate: "2024-03-05", status: "Хугацаа хэтэрсэн" },
-    { student: "С. Мөнх-Эрдэнэ", course: "Механик инженеринг", total: 2200000, paid: 2200000, balance: 0, dueDate: "2024-02-28", status: "Төлөгдсөн" },
-  ];
-
-  const totalBalance = paymentData.reduce((sum, item) => sum + item.balance, 0);
-  const overdueBalance = paymentData
-    .filter(item => item.status === "Хугацаа хэтэрсэн")
-    .reduce((sum, item) => sum + item.balance, 0);
+  const students = Object.values(studentMap);
+  const totalBalance = students.reduce((s, st) => s + st.balance, 0);
+  const overdueBalance = students
+    .filter((st) => st.hasOverdue)
+    .reduce((s, st) => s + st.balance, 0);
+  const fullyPaid = students.filter((st) => st.balance === 0).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a0118] to-[#1a0b2e] p-6">
-      <div className="mx-auto max-w-6xl">
-        {/* Буцах холбоос */}
-        <div className="mb-6">
-          <Link
-            href={backLink}
-            className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white/80 transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 4L6 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Буцах
-          </Link>
-        </div>
-
-        {/* Гарчиг */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Төлбөрийн үлдэгдэл</h1>
-          <p className="text-white/60">
-            Оюутны төлбөрийн үлдэгдэл, хугацаа хэтэрсэн төлбөрийн мэдээлэл
-          </p>
-        </div>
-
-        {/* Нийт статистик */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Нийт үлдэгдэл</h3>
-              <div className="p-2 bg-rose-500/20 rounded-lg">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <path d="M10 1v18M1 10h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
+    <div className="min-h-screen font-sans text-white">
+      <Navbar />
+      <div className="flex">
+        <Sidebar activeMenu={activeMenu} onMenuChange={setActiveMenu} />
+        <main
+          className="flex-1 overflow-y-auto bg-no-repeat px-4 py-5 md:px-6 md:py-6"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(8,14,30,0.9),rgba(8,12,24,0.95)),url('/indra-bg.jpg')",
+            backgroundSize: "72%",
+          }}
+        >
+          <div className="mx-auto max-w-6xl space-y-6">
+            {/* Header */}
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-white/35">
+                  Санхүү
+                </p>
+                <h1 className="mt-1 text-2xl font-semibold">Төлбөрийн үлдэгдэл</h1>
+                <p className="mt-1 text-sm text-white/50">
+                  Оюутны төлбөрийн үлдэгдэл, хугацаа хэтэрсэн мэдээлэл
+                </p>
               </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-2xl font-bold text-white">₮ {totalBalance.toLocaleString()}</div>
-              <div className="text-sm text-white/60">6 оюутнаас</div>
-            </div>
-          </div>
-
-          <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Хугацаа хэтэрсэн</h3>
-              <div className="p-2 bg-amber-500/20 rounded-lg">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <path d="M10 1v18M1 10h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-2xl font-bold text-white">₮ {overdueBalance.toLocaleString()}</div>
-              <div className="text-sm text-white/60">2 оюутнаас</div>
-            </div>
-          </div>
-
-          <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Төлөгдсөн</h3>
-              <div className="p-2 bg-emerald-500/20 rounded-lg">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <path d="M10 1v18M1 10h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-2xl font-bold text-white">2 оюутан</div>
-              <div className="text-sm text-white/60">Бүрэн төлөгдсөн</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Төлбөрийн үлдэгдлийн хүснэгт */}
-        <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
-          <div className="p-5 border-b border-white/10 flex justify-between items-center">
-            <h3 className="text-xl font-semibold text-white">Төлбөрийн үлдэгдлийн жагсаалт</h3>
-            <div className="flex gap-3">
-              <button className="px-4 py-2 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors">
-                Мэдэгдэл илгээх
-              </button>
-              <button className="px-4 py-2 text-sm bg-white/[0.08] hover:bg-white/[0.12] text-white/80 hover:text-white rounded-lg transition-colors">
-                Тайлан татах
+              <button
+                onClick={load}
+                className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 hover:text-white"
+              >
+                ↻ Шинэчлэх
               </button>
             </div>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left p-4 text-white/70 font-medium">Оюутан</th>
-                  <th className="text-left p-4 text-white/70 font-medium">Хичээл</th>
-                  <th className="text-left p-4 text-white/70 font-medium">Нийт төлбөр</th>
-                  <th className="text-left p-4 text-white/70 font-medium">Төлсөн</th>
-                  <th className="text-left p-4 text-white/70 font-medium">Үлдэгдэл</th>
-                  <th className="text-left p-4 text-white/70 font-medium">Эцсийн хугацаа</th>
-                  <th className="text-left p-4 text-white/70 font-medium">Төлөв</th>
-                  <th className="text-left p-4 text-white/70 font-medium">Үйлдэл</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentData.map((payment, index) => (
-                  <tr key={index} className="border-b border-white/5 hover:bg-white/[0.02]">
-                    <td className="p-4 text-white">{payment.student}</td>
-                    <td className="p-4 text-white/70">{payment.course}</td>
-                    <td className="p-4 text-white">₮ {payment.total.toLocaleString()}</td>
-                    <td className="p-4 text-emerald-300">₮ {payment.paid.toLocaleString()}</td>
-                    <td className="p-4 text-rose-300">₮ {payment.balance.toLocaleString()}</td>
-                    <td className="p-4 text-white/70">{payment.dueDate}</td>
-                    <td className="p-4">
-                      <span className={`px-3 py-1 rounded-full text-xs ${
-                        payment.status === "Төлөгдсөн" ? "bg-emerald-500/20 text-emerald-300" :
-                        payment.status === "Хугацаа хэтэрсэн" ? "bg-rose-500/20 text-rose-300" :
-                        "bg-amber-500/20 text-amber-300"
-                      }`}>
-                        {payment.status}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <button className="px-3 py-1.5 text-sm bg-white/[0.08] hover:bg-white/[0.12] text-white/80 hover:text-white rounded-lg transition-colors">
-                        Дэлгэрэнгүй
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
 
-        {/* Тайлбар */}
-        <div className="mt-8 p-5 bg-white/[0.02] border border-white/10 rounded-xl">
-          <h4 className="text-lg font-semibold text-white mb-3">Төлбөрийн үлдэгдлийн тайлбар</h4>
-          <ul className="space-y-2 text-white/60 text-sm">
-            <li>• Төлбөрийн үлдэгдлийг сар бүр шинэчлэн гаргана</li>
-            <li>• Хугацаа хэтэрсэн төлбөрийг улаан өнгөөр тэмдэглэнэ</li>
-            <li>• Эцсийн хугацаанаас 7 хоногийн өмнө сануулга илгээнэ</li>
-            <li>• Төлбөр төлөлтийн явцыг бодит цагт хянана</li>
-            <li>• Оюутнуудын төлбөрийн түүхийг хадгална</li>
-          </ul>
-        </div>
+            {/* Stats */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {[
+                {
+                  label: "Нийт үлдэгдэл",
+                  value: loading ? "…" : fmt(totalBalance),
+                  sub: `${students.filter((s) => s.balance > 0).length} оюутнаас`,
+                  color: "bg-rose-500/20",
+                  icon: "💸",
+                },
+                {
+                  label: "Хугацаа хэтэрсэн",
+                  value: loading ? "…" : fmt(overdueBalance),
+                  sub: `${students.filter((s) => s.hasOverdue).length} оюутнаас`,
+                  color: "bg-amber-500/20",
+                  icon: "⚠️",
+                },
+                {
+                  label: "Бүрэн төлөгдсөн",
+                  value: loading ? "…" : `${fullyPaid} оюутан`,
+                  sub: "Үлдэгдэлгүй",
+                  color: "bg-emerald-500/20",
+                  icon: "✅",
+                },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  className="bg-white/[0.03] border border-white/10 rounded-xl p-5"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-semibold text-white">{s.label}</h3>
+                    <div className={`p-2 ${s.color} rounded-lg text-lg`}>{s.icon}</div>
+                  </div>
+                  <div className="text-2xl font-bold text-white">{s.value}</div>
+                  <div className="text-sm text-white/60 mt-1">{s.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Table */}
+            <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
+              <div className="p-5 border-b border-white/10">
+                <h3 className="text-xl font-semibold text-white">
+                  Оюутны төлбөрийн үлдэгдэл
+                </h3>
+              </div>
+
+              {loading ? (
+                <div className="flex justify-center py-16">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-violet-400" />
+                </div>
+              ) : students.length === 0 ? (
+                <div className="text-center py-16 text-white/40">
+                  <p className="text-4xl mb-3">💰</p>
+                  <p>Төлбөрийн мэдээлэл байхгүй байна</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        {[
+                          "Оюутан",
+                          "Нийт төлбөр",
+                          "Төлсөн",
+                          "Үлдэгдэл",
+                          "Явц",
+                          "Холбоо барих",
+                          "Төлөв",
+                        ].map((h) => (
+                          <th
+                            key={h}
+                            className="text-left p-4 text-white/70 font-medium text-sm"
+                          >
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {students.map((st, i) => {
+                        const progress =
+                          st.total > 0 ? (st.paid / st.total) * 100 : 0;
+                        return (
+                          <tr
+                            key={i}
+                            className="border-b border-white/5 hover:bg-white/[0.02]"
+                          >
+                            <td className="p-4">
+                              <p className="text-white font-medium">{st.name}</p>
+                              <p className="text-xs text-white/40 font-mono">
+                                {st.userId}
+                              </p>
+                            </td>
+                            <td className="p-4 text-white">{fmt(st.total)}</td>
+                            <td className="p-4 text-emerald-300">{fmt(st.paid)}</td>
+                            <td className="p-4 text-rose-300">{fmt(st.balance)}</td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${
+                                      progress >= 100
+                                        ? "bg-emerald-500"
+                                        : progress >= 50
+                                        ? "bg-amber-500"
+                                        : "bg-rose-500"
+                                    }`}
+                                    style={{ width: `${progress}%` }}
+                                  />
+                                </div>
+                                <span className="text-white text-sm">
+                                  {progress.toFixed(0)}%
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-white/70">{st.phone ?? "—"}</td>
+                            <td className="p-4">
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs ${
+                                  st.balance === 0
+                                    ? "bg-emerald-500/20 text-emerald-300"
+                                    : st.hasOverdue
+                                    ? "bg-rose-500/20 text-rose-300"
+                                    : "bg-amber-500/20 text-amber-300"
+                                }`}
+                              >
+                                {st.balance === 0
+                                  ? "Бүрэн төлөгдсөн"
+                                  : st.hasOverdue
+                                  ? "Хугацаа хэтэрсэн"
+                                  : "Хүлээгдэж буй"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ export default function CoursePage({ params }: CoursePageProps) {
   const course = getCourseById(params.id);
 
   if (!course) {
-    notFound();
+    return notFound();
   }
 
   return <CourseExperience course={course} />;

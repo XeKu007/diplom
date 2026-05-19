@@ -52,40 +52,43 @@ export default function AdminLoginPage() {
       setError("ID болон нууц үгээ оруулна уу.");
       return;
     }
-    
-    setError("");
-    setLoading(true);
-    
-    // Frontend simulation хийх
-    await new Promise((r) => setTimeout(r, 800));
-    
-    setLoading(false);
-    
-    // Админы төрөл тус бүрийн хувьд чиглүүлэх
-    const selectedAdmin = adminTypes.find(a => a.key === adminType);
+
+    const selectedAdmin = adminTypes.find((a) => a.key === adminType);
     if (!selectedAdmin) {
       setError("Админы төрөл сонгоогүй байна.");
       return;
     }
-    
-    // Admin нэвтрэх логик
-    if (id === "admin" && pass === "admin123") {
-      // Set admin type in localStorage based on selected admin type
-      if (typeof window !== 'undefined') {
-        let userTypeToSave = "admin";
-        if (adminType === "training-admin") {
-          userTypeToSave = "training";
-        } else if (adminType === "finance-admin") {
-          userTypeToSave = "finance";
-        } else if (adminType === "hr-admin") {
-          userTypeToSave = "hr";
-        }
-        localStorage.setItem("userType", userTypeToSave);
-        localStorage.setItem("adminType", adminType);
+
+    setError("");
+    setLoading(true);
+
+    // adminType-с role тодорхойлох
+    const roleMap: Record<string, string> = {
+      "full-admin":     "admin",
+      "training-admin": "training",
+      "finance-admin":  "finance",
+    };
+    const role = roleMap[adminType] ?? "admin";
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, password: pass, role }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Нэвтрэх үед алдаа гарлаа.");
+        return;
       }
-      router.replace(selectedAdmin.redirect);
-    } else {
-      setError("Админы ID эсвэл нууц үг буруу байна.");
+
+      router.replace(data.redirect);
+    } catch {
+      setError("Сүлжээний алдаа гарлаа. Дахин оролдоно уу.");
+    } finally {
+      setLoading(false);
     }
   };
 

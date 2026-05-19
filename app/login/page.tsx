@@ -25,36 +25,35 @@ export default function LoginPage() {
       setError("ID болон нууц үгээ оруулна уу.");
       return;
     }
-    
+
     // ID формат шалгах
     if ((role === "student" || role === "parent") && !/^B\d{9}$/.test(id)) {
       setError("Оюутны ID буруу форматтай. Жишээ: B211930019");
       return;
     }
-    
+
     setError("");
     setLoading(true);
-    
-    // Frontend simulation хийх
-    await new Promise((r) => setTimeout(r, 800));
-    
-    setLoading(false);
-    
-    // Роль тус бүрийн хувьд чиглүүлэх
-    if (role === "student") {
-      router.replace("/home");
-      return;
-    }
-    if (role === "parent") {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("parentStudentId", id);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, password: pass, role }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Нэвтрэх үед алдаа гарлаа.");
+        return;
       }
-      router.replace("/parent");
-      return;
-    }
-    if (role === "teacher") {
-      router.replace("/teacher/home");
-      return;
+
+      router.replace(data.redirect);
+    } catch {
+      setError("Сүлжээний алдаа гарлаа. Дахин оролдоно уу.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -246,20 +245,24 @@ export default function LoginPage() {
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="text-xs text-white/30 mb-1">Оюутан</p>
+                  <p className="text-xs text-white/30 mb-1">Оюутан ID</p>
                   <p className="text-sm font-semibold text-violet-300">B211930019</p>
+                  <p className="text-xs text-white/20 mt-0.5">student123</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="text-xs text-white/30 mb-1">Багш</p>
+                  <p className="text-xs text-white/30 mb-1">Багш ID</p>
                   <p className="text-sm font-semibold text-blue-300">T001</p>
+                  <p className="text-xs text-white/20 mt-0.5">teacher123</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="text-xs text-white/30 mb-1">Эцэг/эх</p>
+                  <p className="text-xs text-white/30 mb-1">Эцэг/эх ID</p>
                   <p className="text-sm font-semibold text-yellow-300">B211930019</p>
+                  <p className="text-xs text-white/20 mt-0.5">parent123</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="text-xs text-white/30 mb-1">Нууц үг</p>
-                  <p className="text-sm font-semibold text-yellow-300">password123</p>
+                  <p className="text-xs text-white/30 mb-1">Оюутан 2</p>
+                  <p className="text-sm font-semibold text-violet-300">B211930020</p>
+                  <p className="text-xs text-white/20 mt-0.5">student123</p>
                 </div>
               </div>
               

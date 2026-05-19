@@ -1,316 +1,243 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 
-export default function FinanceAdminPage() {
-  const [activeMenu, setActiveMenu] = useState("Төлбөрийн мэдээлэл");
-  const [startDate, setStartDate] = useState("2025-05-01");
-  const [endDate, setEndDate] = useState("2025-05-31");
-  const [activeTab, setActiveTab] = useState<"all" | "income" | "expense">("all");
-  const [searchTerm, setSearchTerm] = useState("");
+interface PaymentRow {
+  id: string; term: string; amount: number; status: string;
+  paidAt: string | null; note: string | null;
+  student: { firstName: string; lastName: string; user: { userId: string } };
+}
+interface Student { id: string; name: string; lastName: string; userId: string }
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("userType", "finance");
-      localStorage.setItem("adminType", "finance-admin");
-    }
+const fmt = (n: number) => n.toLocaleString("mn-MN") + "₮";
+
+const statusLabel = (s: string) =>
+  ({ paid: "Төлсөн", pending: "Хүлээгдэж байна", overdue: "Хугацаа хэтэрсэн" }[s] ?? s);
+
+const statusColor = (s: string) => ({
+  paid:    "border-emerald-400/30 bg-emerald-500/10 text-emerald-300",
+  pending: "border-amber-400/30 bg-amber-500/10 text-amber-300",
+  overdue: "border-red-400/30 bg-red-500/10 text-red-300",
+}[s] ?? "border-white/10 text-white/50");
+
+export default function FinancePage() {
+  const [activeMenu, setActiveMenu] = useState("Санхүүгийн мэдээлэл");
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ studentId: "", term: "", amount: "", status: "pending", note: "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [p, s] = await Promise.all([
+        fetch("/api/payments").then((r) => r.json()),
+        fetch("/api/students").then((r) => r.json()),
+      ]);
+      setPayments(Array.isArray(p) ? p : []);
+      setStudents(Array.isArray(s) ? s.map((st: { id: string; name: string; lastName: string; userId: string }) => ({
+        id: st.id, name: st.name, lastName: st.lastName, userId: st.userId,
+      })) : []);
+    } finally { setLoading(false); }
   }, []);
 
-  // Sample data - гүйлгээний түүх
-  const allTransactions = [
-    { id: 1, date: "2025-05-18", time: "16:57:14", type: "Зардал", category: "Багшийн цалин", description: "Б.Батбаяр багш - Сарын цалин", amount: 2500000, method: "Банкны шилжүүлэг", reference: "TXN025704192559621" },
-    { id: 2, date: "2025-05-18", time: "04:19:09", type: "Зардал", category: "Цахилгааны төлбөр", description: "Улаанбаатар цахилгаан түгээх сүлжээ", amount: 850000, method: "Банкны шилжүүлэг", reference: "TXN203790342043495" },
-    { id: 3, date: "2025-05-18", time: "04:11:58", type: "Зардал", category: "Интернет", description: "Unitel - Сарын төлбөр", amount: 450000, method: "Банкны шилжүүлэг", reference: "TXN352305321737758" },
-    { id: 4, date: "2025-05-17", time: "14:23:45", type: "Орлого", category: "Сургалтын төлбөр", description: "Төртэмүүлэн (B211930019) - 2-р улирал", amount: 1125000, method: "Банкны шилжүүлэг", reference: "TXN847392847392847" },
-    { id: 5, date: "2025-05-17", time: "11:08:22", type: "Орлого", category: "Сургалтын төлбөр", description: "Э.Батжаргал (B211930020) - 2-р улирал", amount: 1125000, method: "Картаар", reference: "TXN938475938475938" },
-    { id: 6, date: "2025-05-16", time: "09:45:33", type: "Орлого", category: "Сургалтын төлбөр", description: "Ц.Мөнхбат (B211930021) - 2-р улирал", amount: 1125000, method: "Банкны шилжүүлэг", reference: "TXN029384029384029" },
-    { id: 7, date: "2025-05-15", time: "16:12:08", type: "Зардал", category: "Хоол үйлдвэрлэл", description: "Өдрийн хоолны зардал", amount: 1200000, method: "Бэлэн мөнгө", reference: "TXN847362847362847" },
-    { id: 8, date: "2025-05-15", time: "10:30:15", type: "Орлого", category: "Сургалтын төлбөр", description: "Д.Сүхбат (B211930022) - 2-р улирал", amount: 1125000, method: "Банкны шилжүүлэг", reference: "TXN192837192837192" },
-    { id: 9, date: "2025-05-14", time: "13:55:42", type: "Орлого", category: "Сургалтын төлбөр", description: "Б.Ганбаяр (B211930023) - 2-р улирал", amount: 1125000, method: "Картаар", reference: "TXN564738564738564" },
-    { id: 10, date: "2025-05-13", time: "15:20:18", type: "Зардал", category: "Багшийн цалин", description: "Л.Энхтуяа багш - Сарын цалин", amount: 2300000, method: "Банкны шилжүүлэг", reference: "TXN738291738291738" },
-    { id: 11, date: "2025-05-12", time: "11:40:55", type: "Орлого", category: "Сургалтын төлбөр", description: "Н.Энхжаргал (B211930024) - 2-р улирал", amount: 1125000, method: "Банкны шилжүүлэг", reference: "TXN928374928374928" },
-    { id: 12, date: "2025-05-10", time: "09:15:30", type: "Зардал", category: "Засвар үйлчилгээ", description: "Компьютер засвар", amount: 980000, method: "Бэлэн мөнгө", reference: "TXN473829473829473" },
-  ];
+  useEffect(() => { load(); }, [load]);
 
-  // Огнооны интервалаар шүүх
-  const filteredByDate = allTransactions.filter(t => {
-    const transactionDate = new Date(t.date);
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    return transactionDate >= start && transactionDate <= end;
-  });
-
-  // Төрлөөр шүүх
-  const filteredByType = activeTab === "all" 
-    ? filteredByDate 
-    : filteredByDate.filter(t => 
-        activeTab === "income" ? t.type === "Орлого" : t.type === "Зардал"
-      );
-
-  // Хайлтаар шүүх
-  const filteredTransactions = searchTerm
-    ? filteredByType.filter(t => 
-        t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.reference.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : filteredByType;
-
-  // Нийт орлого, зардал тооцоолох
-  const totalIncome = filteredByDate
-    .filter(t => t.type === "Орлого")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const totalExpense = filteredByDate
-    .filter(t => t.type === "Зардал")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const balance = totalIncome - totalExpense;
-
-  const formatMoney = (amount: number) => {
-    return `${amount.toLocaleString()} ₮`;
-  };
-
-  // Quick date range buttons
-  const setQuickRange = (range: string) => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1;
-    
-    switch(range) {
-      case "today":
-        const todayStr = today.toISOString().split('T')[0];
-        setStartDate(todayStr);
-        setEndDate(todayStr);
-        break;
-      case "week":
-        const weekAgo = new Date(today);
-        weekAgo.setDate(today.getDate() - 7);
-        setStartDate(weekAgo.toISOString().split('T')[0]);
-        setEndDate(today.toISOString().split('T')[0]);
-        break;
-      case "month":
-        setStartDate(`${year}-${String(month).padStart(2, '0')}-01`);
-        setEndDate(`${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`);
-        break;
-      case "3months":
-        const threeMonthsAgo = new Date(today);
-        threeMonthsAgo.setMonth(today.getMonth() - 3);
-        setStartDate(threeMonthsAgo.toISOString().split('T')[0]);
-        setEndDate(today.toISOString().split('T')[0]);
-        break;
+  const handleAdd = async () => {
+    if (!form.studentId || !form.term || !form.amount) {
+      setError("Оюутан, улирал, дүн шаардлагатай"); return;
     }
+    setSaving(true); setError("");
+    try {
+      const res = await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error); return; }
+      setShowAdd(false); setForm({ studentId: "", term: "", amount: "", status: "pending", note: "" }); load();
+    } finally { setSaving(false); }
   };
+
+  const handleStatusChange = async (id: string, status: string) => {
+    await fetch(`/api/payments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    load();
+  };
+
+  const filtered = filterStatus ? payments.filter((p) => p.status === filterStatus) : payments;
+  const totalAll     = payments.reduce((s, p) => s + p.amount, 0);
+  const totalPaid    = payments.filter((p) => p.status === "paid").reduce((s, p) => s + p.amount, 0);
+  const totalPending = payments.filter((p) => p.status !== "paid").reduce((s, p) => s + p.amount, 0);
 
   return (
     <div className="min-h-screen font-sans text-white">
       <Navbar />
       <div className="flex">
         <Sidebar activeMenu={activeMenu} onMenuChange={setActiveMenu} />
-        <main
-          className="flex-1 overflow-y-auto bg-no-repeat px-4 py-5 md:px-6 md:py-6"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(8, 14, 30, 0.9), rgba(8, 12, 24, 0.95)), url('/indra-bg.jpg')",
-            backgroundPosition: "center center",
-            backgroundSize: "72%",
-          }}
-        >
-          <div className="mx-auto max-w-4xl space-y-5">
-            
-            {/* Account Header - Bank style */}
-            <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 backdrop-blur-md">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-xs text-white/50 mb-1">ДАНС / ACCOUNT</p>
-                  <p className="text-sm font-mono text-white/80">5302 864 281</p>
+        <main className="flex-1 overflow-y-auto bg-no-repeat px-4 py-5 md:px-6 md:py-6"
+          style={{ backgroundImage: "linear-gradient(rgba(8,14,30,0.9),rgba(8,12,24,0.95)),url('/indra-bg.jpg')", backgroundSize: "72%" }}>
+          <div className="mx-auto max-w-7xl space-y-6">
+
+            {/* Stats */}
+            <div className="grid gap-5 sm:grid-cols-3">
+              {[
+                { label: "Нийт төлбөр",       value: fmt(totalAll),     color: "text-white" },
+                { label: "Төлсөн",             value: fmt(totalPaid),    color: "text-emerald-400" },
+                { label: "Хүлээгдэж байна",    value: fmt(totalPending), color: totalPending > 0 ? "text-amber-400" : "text-white/40" },
+              ].map((s) => (
+                <div key={s.label} className="rounded-[24px] border border-white/10 bg-[#081120]/70 p-5 backdrop-blur-md text-center">
+                  <p className={`text-2xl font-bold ${s.color}`}>{loading ? "…" : s.value}</p>
+                  <p className="text-sm text-white/50 mt-1">{s.label}</p>
                 </div>
-                <button className="text-white/60 hover:text-white transition-colors">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M6 9l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </div>
-              <p className="text-3xl font-bold text-white mb-1">
-                {formatMoney(balance)}
-              </p>
-              <p className="text-xs text-white/50">Үлдэгдэл</p>
+              ))}
             </div>
 
-            {/* Date Range */}
-            <div className="rounded-2xl border border-white/10 bg-[#081120]/70 p-5 backdrop-blur-md">
-              <p className="text-xs text-white/50 mb-3">Огноо</p>
-              
-              {/* Quick buttons */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button
-                  onClick={() => setQuickRange("today")}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all"
-                >
-                  Өнөөдөр
-                </button>
-                <button
-                  onClick={() => setQuickRange("week")}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all"
-                >
-                  7 хоног
-                </button>
-                <button
-                  onClick={() => setQuickRange("month")}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all"
-                >
-                  1 сар
-                </button>
-                <button
-                  onClick={() => setQuickRange("3months")}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all"
-                >
-                  3 сар
+            {/* Table */}
+            <div className="rounded-[24px] border border-white/10 bg-[#081120]/70 p-5 backdrop-blur-md">
+              <div className="flex flex-wrap items-center gap-3 mb-6">
+                <h2 className="text-sm font-medium uppercase tracking-[0.28em] text-white/70 mr-auto">Төлбөрийн бүртгэл</h2>
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none">
+                  <option value="" className="bg-[#0a1628]">Бүх төлөв</option>
+                  <option value="paid" className="bg-[#0a1628]">Төлсөн</option>
+                  <option value="pending" className="bg-[#0a1628]">Хүлээгдэж байна</option>
+                  <option value="overdue" className="bg-[#0a1628]">Хугацаа хэтэрсэн</option>
+                </select>
+                <button onClick={() => { setShowAdd(true); setError(""); }}
+                  className="rounded-lg border border-emerald-400/30 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-200 hover:bg-emerald-500/25">
+                  + Төлбөр нэмэх
                 </button>
               </div>
 
-              {/* Date inputs */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400/40"
-                />
-                <span className="text-white/40">-</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400/40"
-                />
-              </div>
-            </div>
-
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-xl border border-white/10 bg-[#081120]/70 p-4 backdrop-blur-md">
-                <p className="text-xs text-white/50 mb-2">Нийт орлого</p>
-                <p className="text-xl font-bold text-emerald-400">
-                  {formatMoney(totalIncome)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-[#081120]/70 p-4 backdrop-blur-md">
-                <p className="text-xs text-white/50 mb-2">Нийт зардал</p>
-                <p className="text-xl font-bold text-red-400">
-                  {formatMoney(totalExpense)}
-                </p>
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-2 bg-[#081120]/70 rounded-xl p-1 border border-white/10">
-              <button
-                onClick={() => setActiveTab("all")}
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                  activeTab === "all"
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/40"
-                    : "text-white/60 hover:text-white"
-                }`}
-              >
-                Бүгд
-              </button>
-              <button
-                onClick={() => setActiveTab("income")}
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                  activeTab === "income"
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/40"
-                    : "text-white/60 hover:text-white"
-                }`}
-              >
-                Орлого
-              </button>
-              <button
-                onClick={() => setActiveTab("expense")}
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                  activeTab === "expense"
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/40"
-                    : "text-white/60 hover:text-white"
-                }`}
-              >
-                Зардал
-              </button>
-            </div>
-
-            {/* Search */}
-            <div className="relative">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
-              >
-                <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Дүн, утгаар хайх"
-                className="w-full rounded-xl border border-white/10 bg-[#081120]/70 pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-emerald-400/40"
-              />
-            </div>
-
-            {/* Transaction List */}
-            <div className="space-y-3">
-              {filteredTransactions.length === 0 ? (
-                <div className="text-center py-12 rounded-xl border border-white/10 bg-[#081120]/70">
-                  <p className="text-white/40 text-sm">Гүйлгээ олдсонгүй</p>
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-violet-400" />
                 </div>
+              ) : filtered.length === 0 ? (
+                <p className="text-center py-12 text-white/40">Төлбөрийн бүртгэл байхгүй байна</p>
               ) : (
-                filteredTransactions.map((transaction, index) => {
-                  const showDate = index === 0 || transaction.date !== filteredTransactions[index - 1].date;
-                  
-                  return (
-                    <div key={transaction.id}>
-                      {showDate && (
-                        <p className="text-sm font-medium text-emerald-400 mb-2 mt-4">
-                          {transaction.date}
-                        </p>
-                      )}
-                      <div className="rounded-xl border border-white/10 bg-[#081120]/70 p-4 hover:bg-white/[0.03] transition-colors">
-                        <div className="flex items-start gap-3">
-                          <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            transaction.type === "Орлого" 
-                              ? "bg-emerald-500/20 text-emerald-400" 
-                              : "bg-red-500/20 text-red-400"
-                          }`}>
-                            {transaction.type === "Орлого" ? "↓" : "↑"}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <p className="text-sm font-medium text-white">
-                                {transaction.time}
-                              </p>
-                              <p className={`text-base font-bold whitespace-nowrap ${
-                                transaction.type === "Орлого" ? "text-emerald-400" : "text-red-400"
-                              }`}>
-                                {transaction.type === "Орлого" ? "+" : "-"}{formatMoney(transaction.amount)}
-                              </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        {["Оюутан","Улирал","Дүн","Огноо","Төлөв","Үйлдэл"].map((h) => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-medium text-white/40">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((p) => (
+                        <tr key={p.id} className="border-b border-white/[0.05] hover:bg-white/[0.02]">
+                          <td className="px-4 py-3">
+                            <p className="font-medium">{p.student.lastName} {p.student.firstName}</p>
+                            <p className="text-xs text-white/40">{p.student.user.userId}</p>
+                          </td>
+                          <td className="px-4 py-3 text-white/70">{p.term}</td>
+                          <td className="px-4 py-3 font-bold">{fmt(p.amount)}</td>
+                          <td className="px-4 py-3 text-white/50 text-xs">
+                            {p.paidAt ? new Date(p.paidAt).toLocaleDateString("mn-MN") : "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`rounded-full border px-2.5 py-0.5 text-xs ${statusColor(p.status)}`}>
+                              {statusLabel(p.status)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-1">
+                              {p.status !== "paid" && (
+                                <button onClick={() => handleStatusChange(p.id, "paid")}
+                                  className="rounded-lg border border-emerald-400/30 bg-emerald-500/15 px-2.5 py-1 text-xs text-emerald-300 hover:bg-emerald-500/25">
+                                  Төлсөн
+                                </button>
+                              )}
+                              {p.status === "pending" && (
+                                <button onClick={() => handleStatusChange(p.id, "overdue")}
+                                  className="rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-xs text-red-400 hover:bg-red-500/20">
+                                  Хэтэрсэн
+                                </button>
+                              )}
                             </div>
-                            <p className="text-xs text-white/80 mb-1">{transaction.description}</p>
-                            <p className="text-xs text-white/40 truncate">{transaction.reference}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
-
           </div>
         </main>
       </div>
+
+      {/* Add Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0a1628] p-6">
+            <h2 className="text-xl font-bold mb-5">Төлбөр нэмэх</h2>
+            {error && <p className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2 text-sm text-red-400">{error}</p>}
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Оюутан *</label>
+                <select value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })}
+                  className="w-full rounded-lg border border-white/10 bg-[#0a1628] px-3 py-2 text-sm text-white focus:outline-none">
+                  <option value="">Сонгох</option>
+                  {students.map((s) => (
+                    <option key={s.id} value={s.id} className="bg-[#0a1628]">
+                      {s.lastName} {s.name} ({s.userId})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Улирал * (жишээ: 2025 намар)</label>
+                <input value={form.term} onChange={(e) => setForm({ ...form, term: e.target.value })}
+                  placeholder="2025 намар"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Дүн (₮) *</label>
+                <input type="number" min="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  placeholder="900000"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Төлөв</label>
+                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  className="w-full rounded-lg border border-white/10 bg-[#0a1628] px-3 py-2 text-sm text-white focus:outline-none">
+                  <option value="pending" className="bg-[#0a1628]">Хүлээгдэж байна</option>
+                  <option value="paid" className="bg-[#0a1628]">Төлсөн</option>
+                  <option value="overdue" className="bg-[#0a1628]">Хугацаа хэтэрсэн</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Тэмдэглэл</label>
+                <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
+                  placeholder="Нэмэлт тэмдэглэл..."
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowAdd(false); setError(""); }}
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 py-2.5 text-sm text-white/70 hover:text-white">Болих</button>
+              <button onClick={handleAdd} disabled={saving}
+                className="flex-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+                {saving ? "Хадгалж байна..." : "Нэмэх"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

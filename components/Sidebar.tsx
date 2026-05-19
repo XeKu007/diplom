@@ -592,7 +592,7 @@ export default function Sidebar({ activeMenu, onMenuChange }: SidebarProps) {
               return (
                 <div key={item.label}>
                   <button
-                    onClick={() => setTeacherOpen((v) => !v)}
+                    onClick={() => setTeacherOpen((v: boolean) => !v)}
                     className={`group flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-all ${
                       isParentActive
                         ? "border-violet-400/20 bg-violet-600/15 text-violet-200"
@@ -644,7 +644,7 @@ export default function Sidebar({ activeMenu, onMenuChange }: SidebarProps) {
               return (
                 <div key={item.label}>
                   <button
-                    onClick={() => setStudentOpen((v) => !v)}
+                    onClick={() => setStudentOpen((v: boolean) => !v)}
                     className={`group flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-all ${
                       isParentActive
                         ? "border-violet-400/20 bg-violet-600/15 text-violet-200"
@@ -696,7 +696,7 @@ export default function Sidebar({ activeMenu, onMenuChange }: SidebarProps) {
               return (
                 <div key={item.label}>
                   <button
-                    onClick={() => setCourseOpen((v) => !v)}
+                    onClick={() => setCourseOpen((v: boolean) => !v)}
                     className={`group flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-all ${
                       isParentActive
                         ? "border-violet-400/20 bg-violet-600/15 text-violet-200"

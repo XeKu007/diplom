@@ -29,18 +29,18 @@ export default function ExamScheduleAdminPage() {
     invigilator: "",
     type: ""
   });
+  const [dbCourses, setDbCourses] = useState<string[]>([]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedType = localStorage.getItem("userType") as "admin" | "training" | "finance" | null;
-      setUserType(savedType);
-      
-      // Set user type if not set (default to admin)
-      if (!savedType) {
-        localStorage.setItem("userType", "admin");
-        setUserType("admin");
-      }
-    }
+    // Load courses from DB
+    fetch("/api/courses")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setDbCourses(data.map((c: { name: string }) => c.name));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const getBackLink = () => {
@@ -64,18 +64,11 @@ export default function ExamScheduleAdminPage() {
     { id: 6, course: "Mobile App Development", date: "2026-05-20", time: "09:00-11:00", room: "306", invigilator: "Л.Эрдэнэ", type: "Эцсийн шалгалт" },
   ];
 
-  // Available courses
-  const availableCourses = [
-    "Python үндэс",
-    "JavaScript",
-    "Database Systems",
-    "Networking",
-    "Cybersecurity",
-    "Mobile App Development",
-    "Web Development",
-    "Data Structures",
-    "Algorithms",
-    "Machine Learning"
+  // Available courses - from DB or fallback
+  const availableCourses = dbCourses.length > 0 ? dbCourses : [
+    "Python үндэс", "JavaScript", "Database Systems", "Networking",
+    "Cybersecurity", "Mobile App Development", "Web Development",
+    "Data Structures", "Algorithms", "Machine Learning"
   ];
 
   const upcomingExams = exams.filter(exam => new Date(exam.date) > new Date());

@@ -1,141 +1,111 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import Link from "next/link";
 
-export default function RoleManagement() {
-  const [activeMenu, setActiveMenu] = useState("Роль удирдлага");
-  const [showAddRoleModal, setShowAddRoleModal] = useState(false);
-  const [newRole, setNewRole] = useState({
-    name: "",
-    description: "",
-    permissions: [] as string[]
-  });
-  
-  // Set user type to admin in localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("userType", "admin");
-      localStorage.setItem("adminType", "full-admin");
-    }
+interface AdminUser {
+  id: string; userId: string; name: string;
+  role: string; adminType: string | null;
+  isActive: boolean; createdAt: string;
+}
+
+const ADMIN_TYPES = [
+  { key: "full-admin",     label: "Бүрэн эрхт админ",      icon: "👑", color: "border-purple-400/30 bg-purple-500/15 text-purple-300" },
+  { key: "training-admin", label: "Сургалтын албаны админ", icon: "📚", color: "border-blue-400/30 bg-blue-500/15 text-blue-300" },
+  { key: "finance-admin",  label: "Санхүүгийн албаны админ",icon: "💰", color: "border-emerald-400/30 bg-emerald-500/15 text-emerald-300" },
+];
+
+const typeLabel = (t: string | null) =>
+  ADMIN_TYPES.find((a) => a.key === t)?.label ?? t ?? "—";
+
+const typeColor = (t: string | null) =>
+  ADMIN_TYPES.find((a) => a.key === t)?.color ?? "border-white/10 text-white/50";
+
+const typeIcon = (t: string | null) =>
+  ADMIN_TYPES.find((a) => a.key === t)?.icon ?? "👤";
+
+export default function RoleManagementPage() {
+  const [activeMenu, setActiveMenu] = useState("Эрхийн удирдлага");
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [form, setForm] = useState({ userId: "", password: "", name: "", adminType: "training-admin" });
+  const [editForm, setEditForm] = useState({ name: "", password: "", isActive: true });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isFullAdmin, setIsFullAdmin] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [me, res] = await Promise.all([
+        fetch("/api/auth/me").then((r) => r.json()),
+        fetch("/api/admin/users"),
+      ]);
+      setIsFullAdmin(me?.role === "admin");
+      if (res.ok) setUsers(await res.json());
+      else setUsers([]);
+    } finally { setLoading(false); }
   }, []);
 
-  const roles = [
-    {
-      id: 1,
-      name: "Бүрэн эрхт админ",
-      description: "Бүх системийн удирдлага, тохиргоо, хэрэглэгчийн эрх",
-      userCount: 3,
-      createdAt: "2023-01-15",
-      status: "active",
-      permissions: 12,
-      color: "from-purple-500 to-pink-600"
-    },
-    {
-      id: 2,
-      name: "Сургалтын албаны админ",
-      description: "Сургалтын удирдлага, оюутны бүртгэл, хичээлийн хуваарь",
-      userCount: 5,
-      createdAt: "2023-03-20",
-      status: "active",
-      permissions: 8,
-      color: "from-blue-500 to-cyan-600"
-    },
-    {
-      id: 3,
-      name: "Санхүүгийн албаны админ",
-      description: "Төлбөрийн мэдээлэл, цалин, санхүүгийн тайлан, төсөв",
-      userCount: 4,
-      createdAt: "2023-04-10",
-      status: "active",
-      permissions: 7,
-      color: "from-emerald-500 to-teal-600"
-    },
-    {
-      id: 4,
-      name: "Багш",
-      description: "Хичээл заах, ирц бүртгэх, дүн оруулах, сургалтын материал",
-      userCount: 48,
-      createdAt: "2023-01-01",
-      status: "active",
-      permissions: 5,
-      color: "from-amber-500 to-orange-600"
-    },
-    {
-      id: 5,
-      name: "Оюутан",
-      description: "Хичээл үзэх, дүн харах, төлбөрийн мэдээлэл, ирцийн мэдээлэл",
-      userCount: 1245,
-      createdAt: "2023-01-01",
-      status: "active",
-      permissions: 4,
-      color: "from-indigo-500 to-blue-600"
-    },
-    {
-      id: 6,
-      name: "Эцэг/эх",
-      description: "Хүүхдийн дүн, ирцийн мэдээлэл, төлбөрийн мэдээлэл, мэдэгдэл",
-      userCount: 890,
-      createdAt: "2023-02-15",
-      status: "active",
-      permissions: 4,
-      color: "from-rose-500 to-red-600"
-    },
-    {
-      id: 7,
-      name: "Системийн админ",
-      description: "Системийн техник дэмжлэг, мониторинг, нөөц хуулбар",
-      userCount: 2,
-      createdAt: "2023-05-01",
-      status: "active",
-      permissions: 6,
-      color: "from-cyan-500 to-blue-600"
-    },
-    {
-      id: 8,
-      name: "Тайлангийн админ",
-      description: "Төрөл бүрийн тайлан үзэх, гаргах, шинжилгээ хийх",
-      userCount: 3,
-      createdAt: "2023-06-15",
-      status: "inactive",
-      permissions: 3,
-      color: "from-gray-500 to-gray-600"
-    },
-  ];
+  useEffect(() => { load(); }, [load]);
 
-  const availablePermissions = [
-    "Системийн тохиргоо",
-    "Хэрэглэгчийн удирдлага",
-    "Роль удирдлага",
-    "Эрх удирдлага",
-    "Оюутны удирдлага",
-    "Багш нарын удирдлага",
-    "Хичээлийн удирдлага",
-    "Төлбөрийн удирдлага",
-    "Цалин удирдлага",
-    "Тайлан үзэх",
-    "Өгөгдлийн удирдлага",
-    "Системийн мониторинг",
-    "Нөөц хуулбар",
-    "Аудитын бүртгэл",
-  ];
-
-  const handleAddRole = () => {
-    // In a real app, this would make an API call
-    console.log("Adding new role:", newRole);
-    setShowAddRoleModal(false);
-    setNewRole({ name: "", description: "", permissions: [] });
+  const handleAdd = async () => {
+    if (!form.userId || !form.password || !form.name) {
+      setError("ID, нууц үг, нэр бүгд шаардлагатай"); return;
+    }
+    setSaving(true); setError(""); setSuccess("");
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error); return; }
+      setSuccess(`${typeLabel(form.adminType)} амжилттай нэмэгдлээ`);
+      setShowAdd(false);
+      setForm({ userId: "", password: "", name: "", adminType: "training-admin" });
+      load();
+    } finally { setSaving(false); }
   };
 
-  const togglePermission = (permission: string) => {
-    setNewRole(prev => ({
-      ...prev,
-      permissions: prev.permissions.includes(permission)
-        ? prev.permissions.filter(p => p !== permission)
-        : [...prev.permissions, permission]
-    }));
+  const handleEdit = async () => {
+    if (!selected) return;
+    setSaving(true); setError(""); setSuccess("");
+    try {
+      const body: Record<string, unknown> = { name: editForm.name, isActive: editForm.isActive };
+      if (editForm.password) body.password = editForm.password;
+      const res = await fetch(`/api/admin/users/${selected.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const d = await res.json(); setError(d.error); return; }
+      setSuccess("Мэдээлэл шинэчлэгдлээ");
+      setShowEdit(false); setSelected(null); load();
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (user: AdminUser) => {
+    if (!confirm(`"${user.name}" (${user.userId})-г устгах уу?`)) return;
+    const res = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json(); setError(d.error); return; }
+    setSuccess("Устгагдлаа");
+    load();
+  };
+
+  const handleToggleActive = async (user: AdminUser) => {
+    await fetch(`/api/admin/users/${user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !user.isActive }),
+    });
+    load();
   };
 
   return (
@@ -143,233 +113,221 @@ export default function RoleManagement() {
       <Navbar />
       <div className="flex">
         <Sidebar activeMenu={activeMenu} onMenuChange={setActiveMenu} />
-        <main
-          className="flex-1 overflow-y-auto bg-no-repeat px-4 py-5 md:px-6 md:py-6"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(8, 14, 30, 0.9), rgba(8, 12, 24, 0.95)), url('/indra-bg.jpg')",
-            backgroundPosition: "center center",
-            backgroundSize: "72%",
-          }}
-        >
-          <div className="mx-auto max-w-7xl space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-white">Роль удирдлага</h1>
-                <p className="mt-1 text-sm text-white/50">Роль нэмэх, засах, устгах, эрх оноох</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2">
-                  <p className="text-sm font-medium text-white">Бүрэн эрхт админ</p>
-                  <p className="text-xs text-white/40">Роль удирдлага</p>
-                </div>
-                <button 
-                  onClick={() => setShowAddRoleModal(true)}
-                  className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white/70 hover:text-white"
-                >
-                  Шинэ роль нэмэх
-                </button>
-                <Link href="/admin/dashboard" className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white/70 hover:text-white">
-                  Буцах
-                </Link>
-              </div>
-            </div>
+        <main className="flex-1 overflow-y-auto bg-no-repeat px-4 py-5 md:px-6 md:py-6"
+          style={{ backgroundImage: "linear-gradient(rgba(8,14,30,0.9),rgba(8,12,24,0.95)),url('/indra-bg.jpg')", backgroundSize: "72%" }}>
+          <div className="mx-auto max-w-5xl space-y-6">
 
-            {/* Stats */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { label: "Нийт роль", value: "8", icon: "👥", color: "bg-blue-500" },
-                { label: "Идэвхтэй роль", value: "7", icon: "✅", color: "bg-emerald-500" },
-                { label: "Нийт хэрэглэгч", value: "2,200", icon: "👤", color: "bg-amber-500" },
-                { label: "Дундаж эрх", value: "6.1", icon: "🔑", color: "bg-purple-500" },
-              ].map((stat, index) => (
-                <div key={index} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-white/50">{stat.label}</p>
-                      <p className="mt-2 text-2xl font-bold text-white">{stat.value}</p>
-                    </div>
-                    <div className={`h-12 w-12 rounded-full ${stat.color} flex items-center justify-center`}>
-                      <span className="text-lg">{stat.icon}</span>
+            {/* Header */}
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-white/35">Систем</p>
+                <h1 className="mt-1 text-2xl font-semibold">Эрхийн удирдлага</h1>
+                <p className="mt-1 text-sm text-white/50">Admin хэрэглэгчдийг удирдах</p>
+              </div>
+              {isFullAdmin && (
+                <button onClick={() => { setShowAdd(true); setError(""); setSuccess(""); }}
+                  className="rounded-lg border border-emerald-400/30 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-200 hover:bg-emerald-500/25">
+                  + Шинэ admin нэмэх
+                </button>
+              )}            </div>
+
+            {/* Alerts */}
+            {success && (
+              <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300 flex items-center gap-2">
+                <span>✅</span> {success}
+                <button onClick={() => setSuccess("")} className="ml-auto text-emerald-400/60 hover:text-emerald-300">✕</button>
+              </div>
+            )}
+            {error && (
+              <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 flex items-center gap-2">
+                <span>❌</span> {error}
+                <button onClick={() => setError("")} className="ml-auto text-red-400/60 hover:text-red-300">✕</button>
+              </div>
+            )}
+
+            {/* Admin type summary */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              {ADMIN_TYPES.map((t) => {
+                const count = users.filter((u) => u.adminType === t.key).length;
+                return (
+                  <div key={t.key} className={`rounded-[20px] border p-4 ${t.color}`}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{t.icon}</span>
+                      <div>
+                        <p className="font-semibold text-sm">{t.label}</p>
+                        <p className="text-xs opacity-70 mt-0.5">{count} хэрэглэгч</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {/* Roles List */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
-              <h2 className="text-lg font-semibold text-white mb-6">Роль жагсаалт</h2>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/10">
-                      <th className="pb-3 text-left text-sm font-medium text-white/50">Роль</th>
-                      <th className="pb-3 text-left text-sm font-medium text-white/50">Тайлбар</th>
-                      <th className="pb-3 text-left text-sm font-medium text-white/50">Хэрэглэгч</th>
-                      <th className="pb-3 text-left text-sm font-medium text-white/50">Эрх</th>
-                      <th className="pb-3 text-left text-sm font-medium text-white/50">Статус</th>
-                      <th className="pb-3 text-left text-sm font-medium text-white/50">Үйлдэл</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {roles.map(role => (
-                      <tr key={role.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                        <td className="py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${role.color} flex items-center justify-center`}>
-                              <span className="text-lg">👑</span>
-                            </div>
-                            <div>
-                              <p className="font-medium text-white">{role.name}</p>
-                              <p className="text-xs text-white/50">ID: {role.id}</p>
-                            </div>
+            {/* Users list */}
+            <div className="rounded-[24px] border border-white/10 bg-[#081120]/70 p-5 backdrop-blur-md">
+              <h2 className="text-sm font-medium uppercase tracking-[0.28em] text-white/70 mb-5">
+                Admin хэрэглэгчид
+                {!loading && <span className="text-white/40 ml-2">({users.length})</span>}
+              </h2>
+
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-violet-400" />
+                </div>
+              ) : users.length === 0 ? (
+                <p className="text-center py-12 text-white/40">Admin хэрэглэгч байхгүй байна</p>
+              ) : (
+                <div className="space-y-3">
+                  {users.map((u) => (
+                    <div key={u.id} className={`rounded-xl border p-4 transition-all ${u.isActive ? "border-white/10 bg-white/[0.03]" : "border-white/5 bg-white/[0.01] opacity-60"}`}>
+                      <div className="flex items-center gap-4">
+                        {/* Icon */}
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-violet-600 to-indigo-800 flex items-center justify-center text-xl shrink-0">
+                          {typeIcon(u.adminType)}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold">{u.name}</p>
+                            {!u.isActive && (
+                              <span className="rounded-full border border-red-400/30 bg-red-500/10 px-2 py-0.5 text-xs text-red-400">Идэвхгүй</span>
+                            )}
                           </div>
-                        </td>
-                        <td className="py-4">
-                          <p className="text-sm text-white/70 max-w-xs">{role.description}</p>
-                          <p className="text-xs text-white/50">{role.createdAt}</p>
-                        </td>
-                        <td className="py-4">
-                          <p className="text-lg font-bold text-white">{role.userCount}</p>
-                        </td>
-                        <td className="py-4">
-                          <p className="text-lg font-bold text-white">{role.permissions}</p>
-                        </td>
-                        <td className="py-4">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            role.status === "active" 
-                              ? "bg-emerald-500/10 text-emerald-400" 
-                              : "bg-gray-500/10 text-gray-400"
-                          }`}>
-                            <span className={`mr-1 h-1.5 w-1.5 rounded-full ${
-                              role.status === "active" ? "bg-emerald-400" : "bg-gray-400"
-                            }`}></span>
-                            {role.status === "active" ? "Идэвхтэй" : "Идэвхгүй"}
-                          </span>
-                        </td>
-                        <td className="py-4">
-                          <div className="flex gap-2">
-                            <button className="rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs text-white/70 hover:text-white">
+                          <p className="text-xs text-white/40 mt-0.5 font-mono">{u.userId}</p>
+                          <div className="mt-1">
+                            <span className={`rounded-full border px-2.5 py-0.5 text-xs ${typeColor(u.adminType)}`}>
+                              {typeLabel(u.adminType)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2 shrink-0">
+                          {isFullAdmin && (
+                            <button
+                              onClick={() => {
+                                setSelected(u);
+                                setEditForm({ name: u.name, password: "", isActive: u.isActive });
+                                setShowEdit(true); setError(""); setSuccess("");
+                              }}
+                              className="rounded-lg border border-blue-400/30 bg-blue-500/15 px-3 py-1.5 text-xs text-blue-300 hover:bg-blue-500/25">
                               Засах
                             </button>
-                            <button className="rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs text-white/70 hover:text-white">
-                              Эрх
+                          )}
+                          {isFullAdmin && (
+                            <button
+                              onClick={() => handleToggleActive(u)}
+                              className={`rounded-lg border px-3 py-1.5 text-xs transition-all ${u.isActive
+                                ? "border-amber-400/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                                : "border-emerald-400/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"}`}>
+                              {u.isActive ? "Хаах" : "Нээх"}
                             </button>
-                            <button className="rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs text-white/70 hover:text-white">
+                          )}
+                          {isFullAdmin && (
+                            <button
+                              onClick={() => handleDelete(u)}
+                              className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20">
                               Устгах
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Role Distribution */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
-              <h2 className="text-lg font-semibold text-white mb-4">Роль тархалт</h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {[
-                  { role: "Оюутан", count: 1245, percentage: 57, color: "bg-indigo-500" },
-                  { role: "Эцэг/эх", count: 890, percentage: 40, color: "bg-rose-500" },
-                  { role: "Багш", count: 48, percentage: 2, color: "bg-amber-500" },
-                  { role: "Админ", count: 12, percentage: 1, color: "bg-blue-500" },
-                ].map((item, index) => (
-                  <div key={index} className="rounded-xl border border-white/10 bg-white/[0.06] p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="font-medium text-white">{item.role}</p>
-                        <p className="text-2xl font-bold text-white">{item.count}</p>
-                      </div>
-                      <div className={`h-10 w-10 rounded-full ${item.color} flex items-center justify-center`}>
-                        <span className="text-lg">👥</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-white/[0.06] overflow-hidden">
-                      <div 
-                        className={`h-full ${item.color} rounded-full`}
-                        style={{ width: `${item.percentage}%` }}
-                      ></div>
-                    </div>
-                    <p className="mt-2 text-sm text-white/50">{item.percentage}%</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </main>
       </div>
 
-      {/* Add Role Modal */}
-      {showAddRoleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0118] p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-white">Шинэ роль нэмэх</h2>
-              <p className="mt-1 text-sm text-white/50">Роль нэмэх, эрх оноох</p>
+      {/* Add Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0a1628] p-6">
+            <h2 className="text-xl font-bold mb-5">Шинэ admin нэмэх</h2>
+            {error && <p className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2 text-sm text-red-400">{error}</p>}
+
+            {/* Admin type selector */}
+            <div className="mb-4">
+              <label className="text-xs text-white/50 mb-2 block">Эрхийн төрөл *</label>
+              <div className="grid gap-2">
+                {ADMIN_TYPES.map((t) => (
+                  <button key={t.key} type="button"
+                    onClick={() => setForm({ ...form, adminType: t.key })}
+                    className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${form.adminType === t.key ? t.color : "border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/[0.05]"}`}>
+                    <span className="text-xl">{t.icon}</span>
+                    <span className="text-sm font-medium">{t.label}</span>
+                    {form.adminType === t.key && <span className="ml-auto text-xs">✓</span>}
+                  </button>
+                ))}
+              </div>
             </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-white/50 mb-2">Роль нэр</label>
-                <input
-                  type="text"
-                  value={newRole.name}
-                  onChange={(e) => setNewRole(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Роль нэр оруулах"
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2.5 text-white placeholder:text-white/30 focus:border-white/20 focus:outline-none"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm text-white/50 mb-2">Тайлбар</label>
-                <textarea
-                  value={newRole.description}
-                  onChange={(e) => setNewRole(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Роль тайлбар оруулах"
-                  rows={3}
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2.5 text-white placeholder:text-white/30 focus:border-white/20 focus:outline-none"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm text-white/50 mb-2">Эрхүүд</label>
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-white/[0.06] p-3">
-                  {availablePermissions.map(permission => (
-                    <div key={permission} className="flex items-center gap-2 py-1.5">
-                      <input
-                        type="checkbox"
-                        id={`perm-${permission}`}
-                        checked={newRole.permissions.includes(permission)}
-                        onChange={() => togglePermission(permission)}
-                        className="h-4 w-4 rounded border-white/10 bg-white/[0.06] text-blue-500 focus:ring-blue-500"
-                      />
-                      <label htmlFor={`perm-${permission}`} className="text-sm text-white/70">
-                        {permission}
-                      </label>
-                    </div>
-                  ))}
+
+            <div className="space-y-3">
+              {[
+                { label: "Нэвтрэх ID *", key: "userId", placeholder: "training2" },
+                { label: "Нууц үг *", key: "password", placeholder: "••••••••", type: "password" },
+                { label: "Нэр *", key: "name", placeholder: "Сургалтын алба 2" },
+              ].map(({ label, key, placeholder, type }) => (
+                <div key={key}>
+                  <label className="text-xs text-white/50 mb-1 block">{label}</label>
+                  <input type={type ?? "text"} placeholder={placeholder}
+                    value={(form as Record<string, string>)[key]}
+                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-violet-400/50" />
                 </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowAdd(false); setForm({ userId: "", password: "", name: "", adminType: "training-admin" }); setError(""); }}
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 py-2.5 text-sm text-white/70 hover:text-white">Болих</button>
+              <button onClick={handleAdd} disabled={saving}
+                className="flex-1 rounded-lg bg-gradient-to-r from-violet-500 to-violet-700 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+                {saving ? "Нэмж байна..." : "Нэмэх"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEdit && selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0a1628] p-6">
+            <h2 className="text-xl font-bold mb-1">Мэдээлэл засах</h2>
+            <p className="text-sm text-white/50 mb-5">{selected.userId} · {typeLabel(selected.adminType)}</p>
+            {error && <p className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-2 text-sm text-red-400">{error}</p>}
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Нэр</label>
+                <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-violet-400/50" />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Шинэ нууц үг (хоосон бол өөрчлөхгүй)</label>
+                <input type="password" placeholder="••••••••" value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-violet-400/50" />
+              </div>
+              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <span className="text-sm text-white/70 flex-1">Идэвхтэй эсэх</span>
+                <button onClick={() => setEditForm({ ...editForm, isActive: !editForm.isActive })}
+                  className={`relative h-6 w-11 rounded-full transition-colors ${editForm.isActive ? "bg-emerald-500" : "bg-white/20"}`}>
+                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${editForm.isActive ? "translate-x-5" : "translate-x-0.5"}`} />
+                </button>
               </div>
             </div>
-            
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={handleAddRole}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                Нэмэх
-              </button>
-              <button
-                onClick={() => setShowAddRoleModal(false)}
-                className="flex-1 rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm text-white/70 hover:text-white"
-              >
-                Цуцлах
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => { setShowEdit(false); setSelected(null); setError(""); }}
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 py-2.5 text-sm text-white/70 hover:text-white">Болих</button>
+              <button onClick={handleEdit} disabled={saving}
+                className="flex-1 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+                {saving ? "Хадгалж байна..." : "Хадгалах"}
               </button>
             </div>
           </div>
