@@ -520,15 +520,23 @@ export default function Sidebar({ activeMenu, onMenuChange }: SidebarProps) {
   const [trainingDropdowns, setTrainingDropdowns] = useState<Record<string, boolean>>({});
   const [financeDropdowns, setFinanceDropdowns] = useState<Record<string, boolean>>({});
   
-  // Determine user type and role
+  // Determine user type and role from JWT session
   const [userType, setUserType] = useState<"training" | "finance" | "admin" | null>(null);
   
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedType = localStorage.getItem("userType") as "training" | "finance" | "admin" | null;
-      setUserType(savedType);
-    }
-  }, [pathname]); // Re-check when pathname changes (e.g., after logout)
+    // Fetch user role from JWT session
+    fetch("/api/auth/me")
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.user?.role) {
+          const role = data.user.role as string;
+          if (role === "admin") setUserType("admin");
+          else if (role === "training") setUserType("training");
+          else if (role === "finance") setUserType("finance");
+        }
+      })
+      .catch(() => {});
+  }, [pathname]);
 
 
 

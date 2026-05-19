@@ -6,13 +6,6 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 export default function BudgetPlanningPage() {
   const { getDashboardLink } = useAdminRole();
 
-  // Determine which dashboard to link back to
-  const getDashboardLink = () => {
-    if (userType === "finance") return "/admin/finance-dashboard";
-    if (userType === "training") return "/admin/training-dashboard";
-    return "/admin/dashboard";
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0118] to-[#1a0b2e] p-6">
       <div className="mx-auto max-w-6xl">

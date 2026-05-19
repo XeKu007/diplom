@@ -9,13 +9,7 @@ export default function Backups() {
   const [activeMenu, setActiveMenu] = useState("Нөөц хуулбар");
   const [backupType, setBackupType] = useState("all");
   
-  // Set user type to admin in localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("userType", "admin");
-      localStorage.setItem("adminType", "full-admin");
-    }
-  }, []);
+
 
   const backups = [
     {

@@ -11,8 +11,12 @@
     "clean": "if exist .next rmdir /s /q .next",
     "fresh": "if exist .next rmdir /s /q .next && next build",
     "db:push": "prisma db push",
+    "db:generate": "prisma generate",
     "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:migrate": "prisma migrate deploy",
+    "postinstall": "prisma generate",
+    "security:check": "npx audit-ci --moderate"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",

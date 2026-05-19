@@ -9,13 +9,7 @@ export default function DataManagement() {
   const [activeMenu, setActiveMenu] = useState("Өгөгдлийн менежмент");
   const [selectedTable, setSelectedTable] = useState("all");
   
-  // Set user type to admin in localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("userType", "admin");
-      localStorage.setItem("adminType", "full-admin");
-    }
-  }, []);
+
 
   const databaseTables = [
     {

@@ -9,13 +9,7 @@ export default function OtherIncome() {
   const [activeMenu, setActiveMenu] = useState("Нэмэлт орлого");
   const [incomeType, setIncomeType] = useState("all");
   
-  // Set user type to finance admin in localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("userType", "finance");
-      localStorage.setItem("adminType", "finance-admin");
-    }
-  }, []);
+
 
   const incomeItems = [
     {

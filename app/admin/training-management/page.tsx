@@ -8,13 +8,7 @@ import Link from "next/link";
 export default function TrainingManagement() {
   const [activeMenu, setActiveMenu] = useState("Хөтөлбөр / Сургалтын төлөвлөгөө");
   
-  // Set user type to admin in localStorage (бүрэн эрхт админ)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("userType", "admin");
-      localStorage.setItem("adminType", "full-admin");
-    }
-  }, []);
+
 
   const trainingPrograms = [
     {

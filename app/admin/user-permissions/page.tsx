@@ -8,13 +8,7 @@ import Link from "next/link";
 export default function UserPermissions() {
   const [activeMenu, setActiveMenu] = useState("Хэрэглэгчийн эрх");
   
-  // Set user type to admin in localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("userType", "admin");
-      localStorage.setItem("adminType", "full-admin");
-    }
-  }, []);
+
 
   const roles = [
     {

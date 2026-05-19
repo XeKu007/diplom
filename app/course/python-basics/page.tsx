@@ -10,16 +10,8 @@ export default function PythonBasicsCourse() {
   const [userType, setUserType] = useState<"student" | "teacher" | "parent" | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedType = localStorage.getItem("userType") as "student" | "teacher" | "parent" | null;
-      setUserType(savedType);
-      
-      // Set user type if not set (default to student for course pages)
-      if (!savedType && window.location.pathname.startsWith("/course/")) {
-        localStorage.setItem("userType", "student");
-        setUserType("student");
-      }
-    }
+    // Course pages default to student view
+    setUserType("student");
   }, []);
 
   const weeks = [

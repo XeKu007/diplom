@@ -12,13 +12,7 @@ export default function SystemMonitoring() {
   const [diskUsage, setDiskUsage] = useState(24);
   const [networkUsage, setNetworkUsage] = useState(12);
   
-  // Set user type to admin in localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("userType", "admin");
-      localStorage.setItem("adminType", "full-admin");
-    }
-    
     // Simulate real-time updates
     const interval = setInterval(() => {
       setCpuUsage(prev => {

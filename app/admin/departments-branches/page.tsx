@@ -8,13 +8,7 @@ import Link from "next/link";
 export default function DepartmentsBranches() {
   const [activeMenu, setActiveMenu] = useState("Тэнхим, салбар сургууль");
   
-  // Set user type to admin in localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("userType", "admin");
-      localStorage.setItem("adminType", "full-admin");
-    }
-  }, []);
+
 
   return (
     <div className="min-h-screen font-sans text-white">

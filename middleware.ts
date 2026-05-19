@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromCookieHeader, verifyTokenEdge } from "@/lib/auth-edge";
 
-// Нэвтрэхгүйгээр нээлттэй хуудсууд
+// ── Нийтийн хуудсууд (auth шаардлагагүй) ─────────────────
 const PUBLIC_PATHS = ["/", "/landing", "/login", "/register", "/admin/login"];
 
-// Роль тус бүрийн зөвшөөрөгдсөн prefix
+// ── Роль тус бүрийн зөвшөөрөгдсөн prefix ─────────────────
 const ROLE_PREFIXES: Record<string, string[]> = {
   student:  ["/home", "/student", "/course", "/course-info"],
   teacher:  ["/teacher"],
@@ -12,6 +12,16 @@ const ROLE_PREFIXES: Record<string, string[]> = {
   admin:    ["/admin"],
   training: ["/admin"],
   finance:  ["/admin"],
+};
+
+// ── Redirect map ──────────────────────────────────────────
+const ROLE_HOME: Record<string, string> = {
+  student:  "/home",
+  teacher:  "/teacher/home",
+  parent:   "/parent",
+  admin:    "/admin/dashboard",
+  training: "/admin/training-dashboard",
+  finance:  "/admin/finance-dashboard",
 };
 
 function isPublic(pathname: string): boolean {
@@ -28,7 +38,7 @@ function isAllowed(pathname: string, role: string): boolean {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Static файл, API route-г алгасах
+  // ── Static файл, API route алгасах ───────────────────────
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
@@ -37,50 +47,49 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Нийтийн хуудас — шалгахгүй
+  // ── Нийтийн хуудас ────────────────────────────────────────
   if (isPublic(pathname)) {
     return NextResponse.next();
   }
 
-  // Cookie-с token унших
+  // ── Cookie-с token унших ──────────────────────────────────
   const cookieHeader = req.headers.get("cookie") ?? "";
   const token = getTokenFromCookieHeader(cookieHeader);
 
   if (!token) {
-    const loginUrl = pathname.startsWith("/admin")
-      ? "/admin/login"
-      : "/login";
+    const loginUrl = pathname.startsWith("/admin") ? "/admin/login" : "/login";
     return NextResponse.redirect(new URL(loginUrl, req.url));
   }
 
   const session = await verifyTokenEdge(token);
 
   if (!session) {
-    const loginUrl = pathname.startsWith("/admin")
-      ? "/admin/login"
-      : "/login";
+    const loginUrl = pathname.startsWith("/admin") ? "/admin/login" : "/login";
     const res = NextResponse.redirect(new URL(loginUrl, req.url));
-    res.cookies.delete("indra_session");
+    // Хүчингүй cookie устгах
+    res.cookies.set("indra_session", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0,
+      path: "/",
+    });
     return res;
   }
 
-  // Роль шалгах
+  // ── Роль шалгах ───────────────────────────────────────────
   if (!isAllowed(pathname, session.role)) {
-    // Зөв хуудас руу чиглүүлэх
-    const redirectMap: Record<string, string> = {
-      student:  "/home",
-      teacher:  "/teacher/home",
-      parent:   "/parent",
-      admin:    "/admin/dashboard",
-      training: "/admin/training-dashboard",
-      finance:  "/admin/finance-dashboard",
-    };
     return NextResponse.redirect(
-      new URL(redirectMap[session.role] ?? "/login", req.url)
+      new URL(ROLE_HOME[session.role] ?? "/login", req.url)
     );
   }
 
-  return NextResponse.next();
+  // ── Security headers request-д нэмэх ─────────────────────
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-user-id", session.userId);
+  requestHeaders.set("x-user-role", session.role);
+
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
