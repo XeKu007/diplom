@@ -12,7 +12,7 @@
     "fresh": "if exist .next rmdir /s /q .next && next build",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
+    "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:migrate": "prisma migrate deploy",
     "postinstall": "prisma generate",
@@ -36,6 +36,7 @@
     "postcss": ">=8.5.10",
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
+    "tsx": "^4.22.3",
     "typescript": "^5"
   },
   "overrides": {
